@@ -1,145 +1,162 @@
-![Base](logo.webp)
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>2048 Simple</title>
+<style>
+  body {
+    font-family: sans-serif;
+    background: #faf8ef;
+    display: flex;
+    justify-content: center;
+  }
+  #game {
+    width: 320px;
+    background: #bbada0;
+    padding: 10px;
+    border-radius: 10px;
+  }
+  .row {
+    display: flex;
+  }
+  .cell {
+    width: 70px;
+    height: 70px;
+    margin: 5px;
+    background: #cdc1b4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    border-radius: 5px;
+  }
+  #score {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 18px;
+  }
+</style>
+</head>
+<body>
 
-# Base Node
+<div>
+  <div id="score">Score: 0</div>
+  <div id="game"></div>
+</div>
 
-Base is a secure, low-cost, developer-friendly Ethereum L2 built on Optimism's [OP Stack](https://docs.optimism.io/). This repository contains Docker builds to run your own node on the Base network.
+<script>
+let grid = [];
+let score = 0;
+const size = 4;
+const game = document.getElementById("game");
+const scoreEl = document.getElementById("score");
 
-[![Website base.org](https://img.shields.io/website-up-down-green-red/https/base.org.svg)](https://base.org)
-[![Docs](https://img.shields.io/badge/docs-up-green)](https://docs.base.org/)
-[![Discord](https://img.shields.io/discord/1067165013397213286?label=discord)](https://base.org/discord)
-[![Twitter Base](https://img.shields.io/twitter/follow/Base?style=social)](https://x.com/Base)
-[![Farcaster Base](https://img.shields.io/badge/Farcaster_Base-3d8fcc)](https://farcaster.xyz/base)
+function init() {
+  grid = Array(size).fill().map(() => Array(size).fill(0));
+  score = 0;
+  addRandom();
+  addRandom();
+  render();
+}
 
-## Quick Start
+function addRandom() {
+  let empty = [];
+  for (let i = 0; i < size; i++)
+    for (let j = 0; j < size; j++)
+      if (grid[i][j] === 0) empty.push([i, j]);
 
-1. Ensure you have an Ethereum L1 full node RPC available
-2. Choose your network:
-   - For mainnet: Use `.env.mainnet`
-   - For testnet: Use `.env.sepolia`
-3. Configure your L1 endpoints in the appropriate `.env` file:
-   ```bash
-   OP_NODE_L1_ETH_RPC=<your-preferred-l1-rpc>
-   OP_NODE_L1_BEACON=<your-preferred-l1-beacon>
-   OP_NODE_L1_BEACON_ARCHIVER=<your-preferred-l1-beacon-archiver>
-   ```
-4. Start the node:
+  if (empty.length === 0) return;
+  let [x, y] = empty[Math.floor(Math.random() * empty.length)];
+  grid[x][y] = Math.random() < 0.9 ? 2 : 4;
+}
 
-   ```bash
-   # For mainnet (default):
-   docker compose up --build
+function render() {
+  game.innerHTML = "";
+  for (let i = 0; i < size; i++) {
+    let row = document.createElement("div");
+    row.className = "row";
+    for (let j = 0; j < size; j++) {
+      let cell = document.createElement("div");
+      cell.className = "cell";
+      cell.textContent = grid[i][j] || "";
+      row.appendChild(cell);
+    }
+    game.appendChild(row);
+  }
+  scoreEl.textContent = "Score: " + score;
+}
 
-   # For testnet:
-   NETWORK_ENV=.env.sepolia docker compose up --build
+function slide(row) {
+  let arr = row.filter(v => v);
+  for (let i = 0; i < arr.length - 1; i++) {
+    if (arr[i] === arr[i + 1]) {
+      arr[i] *= 2;
+      score += arr[i];
+      arr[i + 1] = 0;
+    }
+  }
+  arr = arr.filter(v => v);
+  while (arr.length < size) arr.push(0);
+  return arr;
+}
 
-   # To use a specific client (optional):
-   CLIENT=reth docker compose up --build
+function rotate(times) {
+  for (let t = 0; t < times; t++) {
+    grid = grid[0].map((_, i) => grid.map(r => r[i]).reverse());
+  }
+}
 
-   # For testnet with a specific client:
-   NETWORK_ENV=.env.sepolia CLIENT=reth docker compose up --build
-   ```
+function move(dir) {
+  rotate(dir);
+  let old = JSON.stringify(grid);
+  for (let i = 0; i < size; i++) {
+    grid[i] = slide(grid[i]);
+  }
+  rotate((4 - dir) % 4);
+  if (JSON.stringify(grid) !== old) {
+    addRandom();
+    render();
+    checkGameOver();
+  }
+}
 
-### Supported Clients
+function checkGameOver() {
+  for (let i = 0; i < size; i++)
+    for (let j = 0; j < size; j++)
+      if (grid[i][j] === 0) return;
+  alert("Game Over! Score: " + score);
+  // اینجا بعداً تراکنش بلاکچین می‌زنیم
+}
 
-- `reth` (default)
-- `geth`
-- `nethermind`
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") move(0);
+  if (e.key === "ArrowUp") move(1);
+  if (e.key === "ArrowRight") move(2);
+  if (e.key === "ArrowDown") move(3);
+});
 
-## Requirements
+// Swipe (موبایل)
+let startX, startY;
+document.addEventListener("touchstart", e => {
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+});
 
-### Minimum Requirements
+document.addEventListener("touchend", e => {
+  let dx = e.changedTouches[0].clientX - startX;
+  let dy = e.changedTouches[0].clientY - startY;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0) move(2);
+    else move(0);
+  } else {
+    if (dy > 0) move(3);
+    else move(1);
+  }
+});
 
-- Modern Multicore CPU
-- 32GB RAM (64GB Recommended)
-- NVMe SSD drive
-- Storage: (2 \* [current chain size](https://base.org/stats) + [snapshot size](https://basechaindata.vercel.app) + 20% buffer) (to accommodate future growth)
-- Docker and Docker Compose
+init();
+</script>
 
-### Production Hardware Specifications
-
-The following are the hardware specifications we use in production:
-
-#### Reth Archive Node (recommended)
-
-- **Instance**: AWS i7i.12xlarge
-- **Storage**: RAID 0 of all local NVMe drives (`/dev/nvme*`)
-- **Filesystem**: ext4
-
-#### Geth Full Node
-
-- **Instance**: AWS i7i.12xlarge
-- **Storage**: RAID 0 of all local NVMe drives (`/dev/nvme*`)
-- **Filesystem**: ext4
-
-> [!NOTE]
-To run the node using a supported client, you can use the following command:
-`CLIENT=supported_client docker compose up --build`
- 
-Supported clients:
- - reth (runs vanilla node by default, Flashblocks mode enabled by providing RETH_FB_WEBSOCKET_URL, see [Reth Node README](./reth/README.md))
- - geth
- - nethermind
-
-## Configuration
-
-### Required Settings
-
-- L1 Configuration:
-  - `OP_NODE_L1_ETH_RPC`: Your Ethereum L1 node RPC endpoint
-  - `OP_NODE_L1_BEACON`: Your L1 beacon node endpoint
-  - `OP_NODE_L1_BEACON_ARCHIVER`: Your L1 beacon archiver endpoint
-  - `OP_NODE_L1_RPC_KIND`: The type of RPC provider being used (default: "debug_geth"). Supported values:
-    - `alchemy`: Alchemy RPC provider
-    - `quicknode`: QuickNode RPC provider
-    - `infura`: Infura RPC provider
-    - `parity`: Parity RPC provider
-    - `nethermind`: Nethermind RPC provider
-    - `debug_geth`: Debug Geth RPC provider
-    - `erigon`: Erigon RPC provider
-    - `basic`: Basic RPC provider (standard receipt fetching only)
-    - `any`: Any available RPC method
-    - `standard`: Standard RPC methods including newer optimized methods
-
-### Network Settings
-
-- Mainnet:
-  - `RETH_CHAIN=base`
-  - `OP_NODE_NETWORK=base-mainnet`
-  - Sequencer: `https://mainnet-sequencer.base.org`
-
-### Performance Settings
-
-- Cache Settings:
-  - `GETH_CACHE="20480"` (20GB)
-  - `GETH_CACHE_DATABASE="20"` (4GB)
-  - `GETH_CACHE_GC="12"`
-  - `GETH_CACHE_SNAPSHOT="24"`
-  - `GETH_CACHE_TRIE="44"`
-
-### Optional Features
-
-- EthStats Monitoring (uncomment to enable)
-- Trusted RPC Mode (uncomment to enable)
-- Snap Sync (experimental)
-
-For full configuration options, see the `.env.mainnet` file.
-
-## Snapshots
-
-Snapshots are available to help you sync your node more quickly. See [docs.base.org](https://docs.base.org/chain/run-a-base-node#snapshots) for links and more details on how to restore from a snapshot.
-
-## Supported Networks
-
-| Network | Status |
-| ------- | ------ |
-| Mainnet | ✅     |
-| Testnet | ✅     |
-
-## Troubleshooting
-
-For support please join our [Discord](https://discord.gg/buildonbase) post in `🛠｜node-operators`. You can alternatively open a new GitHub issue.
-
-## Disclaimer
-
-THE NODE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. We make no guarantees about asset protection or security. Usage is subject to applicable laws and regulations.
-
-For more information, visit [docs.base.org](https://docs.base.org/).
+</body>
+</html>
