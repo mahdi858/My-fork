@@ -126,9 +126,9 @@ function checkGameOver() {
     for (let j = 0; j < size; j++)
       if (grid[i][j] === 0) return;
   alert("Game Over! Score: " + score);
-  // اینجا بعداً تراکنش بلاکچین می‌زنیم
+  // 
+0x855269A3265b05e5770d73c101D9427E1E25a562
 }
-
 document.addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") move(0);
   if (e.key === "ArrowUp") move(1);
@@ -136,7 +136,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "ArrowDown") move(3);
 });
 
-// Swipe (موبایل)
+// Swipe mobile
 let startX, startY;
 document.addEventListener("touchstart", e => {
   startX = e.touches[0].clientX;
